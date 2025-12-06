@@ -66,7 +66,12 @@ export default function ManageItemsPage() {
 
   const handleEdit = (item: Item) => {
     setEditingId(item.id);
-    setFormData(item);
+    setFormData({
+      id: item.id,
+      name: item.name,
+      unit: item.unit,
+      emoji: item.emoji || "",
+    });
   };
 
   const handleSaveEdit = async () => {

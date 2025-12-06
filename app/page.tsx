@@ -563,7 +563,6 @@ export default function PriceComparePage() {
   const [loading, setLoading] = useState(true);
   const [showResults, setShowResults] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [dataError, setDataError] = useState<string | null>(null);
 
   // Fetch data from API
   useEffect(() => {
@@ -597,11 +596,8 @@ export default function PriceComparePage() {
         if (marketsData.length >= 3) {
           setSelectedMarkets([marketsData[0].id, marketsData[1].id, marketsData[2].id]);
         }
-
-        setDataError(null);
       } catch (error) {
         console.error("Error fetching data:", error);
-        setDataError("Failed to load data. Please make sure the database is set up.");
       } finally {
         setLoading(false);
       }
@@ -665,7 +661,7 @@ export default function PriceComparePage() {
     navigator.clipboard?.writeText(lines.join("\n"));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-  }, [selectedItems, selectedMarkets, items, markets]);
+  }, [selectedItems, selectedMarkets, items, markets, prices]);
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 py-8 px-4">

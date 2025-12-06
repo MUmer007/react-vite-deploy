@@ -33,9 +33,9 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json(market, { status: 201 });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error creating market:', error);
-    if (error.code === 'P2002') {
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
       return NextResponse.json({ error: 'Market with this name already exists' }, { status: 409 });
     }
     return NextResponse.json({ error: 'Failed to create market' }, { status: 500 });

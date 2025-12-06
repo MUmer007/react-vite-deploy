@@ -11,7 +11,6 @@ type Price = { id: string; itemId: string; marketId: string; price: number };
 export default function ManagePricesPage() {
   const [items, setItems] = useState<Item[]>([]);
   const [markets, setMarkets] = useState<Market[]>([]);
-  const [prices, setPrices] = useState<Price[]>([]);
   const [priceInputs, setPriceInputs] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
@@ -38,7 +37,6 @@ export default function ManagePricesPage() {
 
       setItems(itemsData);
       setMarkets(marketsData);
-      setPrices(pricesData);
 
       // Initialize price inputs
       const inputs: Record<string, string> = {};

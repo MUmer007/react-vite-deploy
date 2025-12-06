@@ -2,10 +2,11 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
 // GET single price
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const price = await prisma.price.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         item: true,
         market: true,
@@ -24,8 +25,9 @@ export async function GET(request: Request, { params }: { params: { id: string }
 }
 
 // PUT update price
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
+export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const { price: priceValue } = body;
 
@@ -34,7 +36,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     }
 
     const price = await prisma.price.update({
-      where: { id: params.id },
+      where: { id },
       data: { price: parseFloat(priceValue) },
       include: {
         item: true,
@@ -43,9 +45,9 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     });
 
     return NextResponse.json(price);
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error updating price:', error);
-    if (error.code === 'P2025') {
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'P2025') {
       return NextResponse.json({ error: 'Price not found' }, { status: 404 });
     }
     return NextResponse.json({ error: 'Failed to update price' }, { status: 500 });
@@ -53,16 +55,17 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 }
 
 // DELETE price
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     await prisma.price.delete({
-      where: { id: params.id },
+      where: { id },
     });
 
     return NextResponse.json({ message: 'Price deleted successfully' });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error deleting price:', error);
-    if (error.code === 'P2025') {
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'P2025') {
       return NextResponse.json({ error: 'Price not found' }, { status: 404 });
     }
     return NextResponse.json({ error: 'Failed to delete price' }, { status: 500 });

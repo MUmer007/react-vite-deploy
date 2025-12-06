@@ -68,9 +68,9 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(result, { status: existingPrice ? 200 : 201 });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error creating/updating price:', error);
-    if (error.code === 'P2003') {
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'P2003') {
       return NextResponse.json({ error: 'Invalid itemId or marketId' }, { status: 400 });
     }
     return NextResponse.json({ error: 'Failed to create/update price' }, { status: 500 });

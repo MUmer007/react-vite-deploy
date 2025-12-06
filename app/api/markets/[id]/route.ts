@@ -2,10 +2,11 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
 // GET single market
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const market = await prisma.market.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: { prices: true },
     });
 
@@ -21,13 +22,14 @@ export async function GET(request: Request, { params }: { params: { id: string }
 }
 
 // PUT update market
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
+export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const { name, rating, verified } = body;
 
     const market = await prisma.market.update({
-      where: { id: params.id },
+      where: { id },
       data: { 
         name, 
         rating: rating ? parseFloat(rating) : null,
@@ -36,29 +38,32 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     });
 
     return NextResponse.json(market);
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error updating market:', error);
-    if (error.code === 'P2025') {
-      return NextResponse.json({ error: 'Market not found' }, { status: 404 });
-    }
-    if (error.code === 'P2002') {
-      return NextResponse.json({ error: 'Market with this name already exists' }, { status: 409 });
+    if (error && typeof error === 'object' && 'code' in error) {
+      if (error.code === 'P2025') {
+        return NextResponse.json({ error: 'Market not found' }, { status: 404 });
+      }
+      if (error.code === 'P2002') {
+        return NextResponse.json({ error: 'Market with this name already exists' }, { status: 409 });
+      }
     }
     return NextResponse.json({ error: 'Failed to update market' }, { status: 500 });
   }
 }
 
 // DELETE market
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     await prisma.market.delete({
-      where: { id: params.id },
+      where: { id },
     });
 
     return NextResponse.json({ message: 'Market deleted successfully' });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error deleting market:', error);
-    if (error.code === 'P2025') {
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'P2025') {
       return NextResponse.json({ error: 'Market not found' }, { status: 404 });
     }
     return NextResponse.json({ error: 'Failed to delete market' }, { status: 500 });
