@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState, useEffect } from "react";
 import {
   ShoppingBasket,
   ArrowLeft,
@@ -13,8 +13,10 @@ import {
   Check,
   AlertCircle,
   Filter,
+  Settings,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
 
 /**
  * Enhanced Price Compare - Fixed issues and added improvements
@@ -24,340 +26,34 @@ import { motion, AnimatePresence } from "framer-motion";
  * - Added: Price difference percentages
  * - Added: Better mobile responsiveness
  * - Added: Savings calculator
+ * - Added: Dynamic items and markets management
  */
 
 /* ----------------------------- Types ------------------------------ */
 type Item = { id: string; name: string; unit: string; emoji?: string };
-type Market = { id: string; name: string; rating?: number; verified?: boolean };
+type Market = { id: string; name: string; rating?: number | null; verified?: boolean };
 type PriceMap = Record<string, Record<string, number | null>>;
+type PriceData = { id: string; itemId: string; marketId: string; price: number };
 
-/* --------------------------- Sample Data -------------------------- */
-const ITEMS: Item[] = [
-  { id: "sugar", name: "Sugar", unit: "kg", emoji: "🍚" },
-  { id: "flour", name: "Flour", unit: "kg", emoji: "🌾" },
-  { id: "rice", name: "Rice", unit: "kg", emoji: "🍚" },
-  { id: "milk", name: "Milk", unit: "liter", emoji: "🥛" },
-  { id: "eggs", name: "Eggs", unit: "dozen", emoji: "🥚" },
-  { id: "oil", name: "Cooking Oil", unit: "liter", emoji: "🛢️" },
-  { id: "butter", name: "Butter", unit: "pack", emoji: "🧈" },
-  { id: "chicken", name: "Chicken", unit: "kg", emoji: "🍗" },
-  { id: "beef", name: "Beef", unit: "kg", emoji: "🥩" },
-  { id: "potato", name: "Potato", unit: "kg", emoji: "🥔" },
-  { id: "tomato", name: "Tomato", unit: "kg", emoji: "🍅" },
-  { id: "onion", name: "Onion", unit: "kg", emoji: "🧅" },
-  { id: "apple", name: "Apple", unit: "kg", emoji: "🍎" },
-  { id: "banana", name: "Banana", unit: "dozen", emoji: "🍌" },
-  { id: "salt", name: "Salt", unit: "kg", emoji: "🧂" },
-  { id: "tea", name: "Tea", unit: "packet", emoji: "🍵" },
-  { id: "coffee", name: "Coffee", unit: "jar", emoji: "☕" },
-  { id: "detergent", name: "Detergent", unit: "kg", emoji: "🧺" },
-  { id: "soap", name: "Soap", unit: "piece", emoji: "🧼" },
-  { id: "toothpaste", name: "Toothpaste", unit: "tube", emoji: "🪥" },
-];
-
-const MARKETS: Market[] = [
-  { id: "imtiaz", name: "Imtiaz", rating: 4.6, verified: true },
-  { id: "carrefour", name: "Carrefour", rating: 4.5, verified: true },
-  { id: "chaseup", name: "Chase Up", rating: 4.2 },
-  { id: "metro", name: "Metro", rating: 4.4, verified: true },
-  { id: "alfatah", name: "Al-Fatah", rating: 4.0 },
-  { id: "utility", name: "Utility Store", rating: 3.8 },
-  { id: "hyperstar", name: "Hyperstar", rating: 4.1 },
-  { id: "freshmart", name: "FreshMart", rating: 3.9 },
-  { id: "naheed", name: "Naheed", rating: 4.0 },
-  { id: "greenvalley", name: "Green Valley", rating: 4.0 },
-  { id: "madina", name: "Madina Cash & Carry", rating: 3.8 },
-  { id: "jalals", name: "Jalal Sons", rating: 4.2 },
-];
-
-const PRICES: PriceMap = {
-  sugar: {
-    imtiaz: 150,
-    carrefour: 160,
-    chaseup: 155,
-    metro: 170,
-    alfatah: 153,
-    utility: 158,
-    hyperstar: 165,
-    freshmart: 151,
-    naheed: 152,
-    greenvalley: 154,
-    madina: 158,
-    jalals: 149,
-  },
-  flour: {
-    imtiaz: 120,
-    carrefour: 118,
-    chaseup: 122,
-    metro: 125,
-    alfatah: 119,
-    utility: 121,
-    hyperstar: 123,
-    freshmart: 117,
-    naheed: 118,
-    greenvalley: 119,
-    madina: 122,
-    jalals: 120,
-  },
-  rice: {
-    imtiaz: 190,
-    carrefour: 195,
-    chaseup: 185,
-    metro: 200,
-    alfatah: 188,
-    utility: 192,
-    hyperstar: 198,
-    freshmart: 187,
-    naheed: 186,
-    greenvalley: 189,
-    madina: 191,
-    jalals: 184,
-  },
-  milk: {
-    imtiaz: 120,
-    carrefour: 125,
-    chaseup: 118,
-    metro: 130,
-    alfatah: 121,
-    utility: 123,
-    hyperstar: 127,
-    freshmart: 119,
-    naheed: 122,
-    greenvalley: 121,
-    madina: 124,
-    jalals: 120,
-  },
-  eggs: {
-    imtiaz: 210,
-    carrefour: 215,
-    chaseup: 205,
-    metro: 220,
-    alfatah: 208,
-    utility: 199,
-    hyperstar: 212,
-    freshmart: 202,
-    naheed: 205,
-    greenvalley: 207,
-    madina: 209,
-    jalals: 200,
-  },
-  oil: {
-    imtiaz: 420,
-    carrefour: 430,
-    chaseup: 415,
-    metro: 440,
-    alfatah: 418,
-    utility: 425,
-    hyperstar: 435,
-    freshmart: 410,
-    naheed: 412,
-    greenvalley: 420,
-    madina: 428,
-    jalals: 419,
-  },
-  butter: {
-    imtiaz: 250,
-    carrefour: 260,
-    chaseup: 255,
-    metro: 270,
-    alfatah: 248,
-    utility: 252,
-    hyperstar: 265,
-    freshmart: 249,
-    naheed: 251,
-    greenvalley: 253,
-    madina: 257,
-    jalals: 245,
-  },
-  chicken: {
-    imtiaz: 480,
-    carrefour: 495,
-    chaseup: 470,
-    metro: 500,
-    alfatah: 478,
-    utility: 475,
-    hyperstar: 490,
-    freshmart: 469,
-    naheed: 472,
-    greenvalley: 475,
-    madina: 485,
-    jalals: 468,
-  },
-  beef: {
-    imtiaz: 900,
-    carrefour: 920,
-    chaseup: 890,
-    metro: 940,
-    alfatah: 905,
-    utility: 895,
-    hyperstar: 915,
-    freshmart: 888,
-    naheed: 892,
-    greenvalley: 898,
-    madina: 910,
-    jalals: 885,
-  },
-  potato: {
-    imtiaz: 40,
-    carrefour: 45,
-    chaseup: 42,
-    metro: 48,
-    alfatah: 41,
-    utility: 43,
-    hyperstar: 44,
-    freshmart: 39,
-    naheed: 40,
-    greenvalley: 41,
-    madina: 42,
-    jalals: 38,
-  },
-  tomato: {
-    imtiaz: 90,
-    carrefour: 95,
-    chaseup: 88,
-    metro: 99,
-    alfatah: 92,
-    utility: 93,
-    hyperstar: 97,
-    freshmart: 87,
-    naheed: 88,
-    greenvalley: 89,
-    madina: 90,
-    jalals: 86,
-  },
-  onion: {
-    imtiaz: 70,
-    carrefour: 72,
-    chaseup: 68,
-    metro: 75,
-    alfatah: 69,
-    utility: 71,
-    hyperstar: 73,
-    freshmart: 67,
-    naheed: 68,
-    greenvalley: 69,
-    madina: 70,
-    jalals: 66,
-  },
-  apple: {
-    imtiaz: 220,
-    carrefour: 230,
-    chaseup: 210,
-    metro: 240,
-    alfatah: 218,
-    utility: 225,
-    hyperstar: 235,
-    freshmart: 215,
-    naheed: 217,
-    greenvalley: 219,
-    madina: 223,
-    jalals: 205,
-  },
-  banana: {
-    imtiaz: 120,
-    carrefour: 125,
-    chaseup: 115,
-    metro: 130,
-    alfatah: 118,
-    utility: 121,
-    hyperstar: 126,
-    freshmart: 117,
-    naheed: 116,
-    greenvalley: 119,
-    madina: 122,
-    jalals: 114,
-  },
-  salt: {
-    imtiaz: 40,
-    carrefour: 45,
-    chaseup: 44,
-    metro: 49,
-    alfatah: 43,
-    utility: 42,
-    hyperstar: 46,
-    freshmart: 41,
-    naheed: 42,
-    greenvalley: 43,
-    madina: 44,
-    jalals: 40,
-  },
-  tea: {
-    imtiaz: 500,
-    carrefour: 520,
-    chaseup: 495,
-    metro: 540,
-    alfatah: 510,
-    utility: 505,
-    hyperstar: 525,
-    freshmart: 490,
-    naheed: 492,
-    greenvalley: 503,
-    madina: 515,
-    jalals: 485,
-  },
-  coffee: {
-    imtiaz: 480,
-    carrefour: 500,
-    chaseup: 470,
-    metro: 510,
-    alfatah: 495,
-    utility: 490,
-    hyperstar: 505,
-    freshmart: 468,
-    naheed: 472,
-    greenvalley: 478,
-    madina: 498,
-    jalals: 460,
-  },
-  detergent: {
-    imtiaz: 350,
-    carrefour: 360,
-    chaseup: 340,
-    metro: 370,
-    alfatah: 345,
-    utility: 348,
-    hyperstar: 355,
-    freshmart: 338,
-    naheed: 342,
-    greenvalley: 346,
-    madina: 352,
-    jalals: 335,
-  },
-  soap: {
-    imtiaz: 60,
-    carrefour: 65,
-    chaseup: 58,
-    metro: 68,
-    alfatah: 62,
-    utility: 61,
-    hyperstar: 64,
-    freshmart: 57,
-    naheed: 59,
-    greenvalley: 60,
-    madina: 63,
-    jalals: 56,
-  },
-  toothpaste: {
-    imtiaz: 120,
-    carrefour: 125,
-    chaseup: 118,
-    metro: 130,
-    alfatah: 121,
-    utility: 122,
-    hyperstar: 127,
-    freshmart: 116,
-    naheed: 117,
-    greenvalley: 119,
-    madina: 123,
-    jalals: 115,
-  },
+/* --------------------------- Utility Functions -------------------------- */
+// Convert price array to price map for easier lookup
+const convertToPriceMap = (prices: PriceData[]): PriceMap => {
+  const map: PriceMap = {};
+  prices.forEach((price) => {
+    if (!map[price.itemId]) {
+      map[price.itemId] = {};
+    }
+    map[price.itemId][price.marketId] = price.price;
+  });
+  return map;
 };
 
 /* --------------------------- Components --------------------------- */
 
-const VisuallyHidden: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <span className="sr-only">{children}</span>
-);
+// Utility component for screen readers (currently unused but kept for future accessibility enhancements)
+// const VisuallyHidden: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+//   <span className="sr-only">{children}</span>
+// );
 
 const Header: React.FC<{ onReset?: () => void }> = ({ onReset }) => (
   <header className="w-full max-w-4xl mx-auto py-4 px-4">
@@ -372,16 +68,25 @@ const Header: React.FC<{ onReset?: () => void }> = ({ onReset }) => (
         </div>
       </div>
 
-      {onReset && (
-        <button
-          type="button"
-          aria-label="Reset selections"
-          onClick={onReset}
+      <div className="flex items-center gap-2">
+        <Link
+          href="/admin/items"
           className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white shadow-sm border hover:bg-gray-50 text-sm transition-colors"
+          aria-label="Manage data"
         >
-          <ArrowLeft className="w-4 h-4" /> Reset
-        </button>
-      )}
+          <Settings className="w-4 h-4" /> Manage
+        </Link>
+        {onReset && (
+          <button
+            type="button"
+            aria-label="Reset selections"
+            onClick={onReset}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white shadow-sm border hover:bg-gray-50 text-sm transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" /> Reset
+          </button>
+        )}
+      </div>
     </div>
   </header>
 );
@@ -615,7 +320,9 @@ const ResultsPerItem: React.FC<{
   itemIds: string[];
   marketIds: string[];
   prices: PriceMap;
-}> = ({ itemIds, marketIds, prices }) => {
+  items: Item[];
+  markets: Market[];
+}> = ({ itemIds, marketIds, prices, items, markets }) => {
   const rows = useMemo(() => {
     return itemIds.map((itemId) => {
       const marketPrices = marketIds.map((m) => {
@@ -637,7 +344,7 @@ const ResultsPerItem: React.FC<{
 
       <div className="space-y-4">
         {rows.map((r) => {
-          const item = ITEMS.find((i) => i.id === r.itemId)!;
+          const item = items.find((i) => i.id === r.itemId)!;
           const priceDiff = r.highest && r.lowest ? r.highest - r.lowest : 0;
           const diffPercent = r.lowest && priceDiff ? ((priceDiff / r.lowest) * 100).toFixed(1) : "0";
 
@@ -683,7 +390,7 @@ const ResultsPerItem: React.FC<{
                   </thead>
                   <tbody>
                     {r.marketPrices.map(({ marketId, price }) => {
-                      const market = MARKETS.find((m) => m.id === marketId)!;
+                      const market = markets.find((m) => m.id === marketId)!;
                       const isLowest = price !== null && price === r.lowest;
                       const isHighest = price !== null && price === r.highest;
                       return (
@@ -734,7 +441,7 @@ const ResultsPerItem: React.FC<{
                 <div className="text-xs text-slate-500 mb-2 font-medium">Price Comparison</div>
                 <div className="space-y-2">
                   {r.marketPrices.map(({ marketId, price }) => {
-                    const market = MARKETS.find((m) => m.id === marketId)!;
+                    const market = markets.find((m) => m.id === marketId)!;
                     const max = Math.max(
                       ...r.marketPrices.map((p) => (typeof p.price === "number" ? p.price : 0))
                     );
@@ -772,11 +479,12 @@ const ResultsPerItem: React.FC<{
   );
 };
 
-const SummaryAnalytics: React.FC<{ itemIds: string[]; marketIds: string[]; prices: PriceMap }> = ({
-  itemIds,
-  marketIds,
-  prices,
-}) => {
+const SummaryAnalytics: React.FC<{
+  itemIds: string[];
+  marketIds: string[];
+  prices: PriceMap;
+  markets: Market[];
+}> = ({ itemIds, marketIds, prices, markets }) => {
   const totalsByMarket = useMemo(() => {
     const totals: Record<string, number[]> = {};
     marketIds.forEach((m) => (totals[m] = []));
@@ -823,7 +531,7 @@ const SummaryAnalytics: React.FC<{ itemIds: string[]; marketIds: string[]; price
           title="Cheapest Overall"
           value={
             cheapest
-              ? `${MARKETS.find((m) => m.id === cheapest.marketId)?.name} - Rs ${cheapest.sum.toFixed(0)}`
+              ? `${markets.find((m) => m.id === cheapest.marketId)?.name} - Rs ${cheapest.sum.toFixed(0)}`
               : "N/A"
           }
           icon={<TrendingDown className="w-5 h-5 text-green-600" />}
@@ -833,7 +541,7 @@ const SummaryAnalytics: React.FC<{ itemIds: string[]; marketIds: string[]; price
           title="Most Expensive"
           value={
             highest
-              ? `${MARKETS.find((m) => m.id === highest.marketId)?.name} - Rs ${highest.sum.toFixed(0)}`
+              ? `${markets.find((m) => m.id === highest.marketId)?.name} - Rs ${highest.sum.toFixed(0)}`
               : "N/A"
           }
           icon={<TrendingUp className="w-5 h-5 text-red-600" />}
@@ -847,11 +555,60 @@ const SummaryAnalytics: React.FC<{ itemIds: string[]; marketIds: string[]; price
 };
 
 export default function PriceComparePage() {
-  const [selectedItems, setSelectedItems] = useState<string[]>(["sugar", "milk", "eggs"]);
-  const [selectedMarkets, setSelectedMarkets] = useState<string[]>(["imtiaz", "carrefour", "metro"]);
-  const [loading, setLoading] = useState(false);
+  const [items, setItems] = useState<Item[]>([]);
+  const [markets, setMarkets] = useState<Market[]>([]);
+  const [prices, setPrices] = useState<PriceMap>({});
+  const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  const [selectedMarkets, setSelectedMarkets] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showResults, setShowResults] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [dataError, setDataError] = useState<string | null>(null);
+
+  // Fetch data from API
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [itemsRes, marketsRes, pricesRes] = await Promise.all([
+          fetch("/api/items"),
+          fetch("/api/markets"),
+          fetch("/api/prices"),
+        ]);
+
+        if (!itemsRes.ok || !marketsRes.ok || !pricesRes.ok) {
+          throw new Error("Failed to fetch data");
+        }
+
+        const [itemsData, marketsData, pricesData] = await Promise.all([
+          itemsRes.json(),
+          marketsRes.json(),
+          pricesRes.json(),
+        ]);
+
+        setItems(itemsData);
+        setMarkets(marketsData);
+        setPrices(convertToPriceMap(pricesData));
+
+        // Set default selections if available
+        if (itemsData.length >= 3) {
+          setSelectedItems([itemsData[0].id, itemsData[1].id, itemsData[2].id]);
+        }
+        if (marketsData.length >= 3) {
+          setSelectedMarkets([marketsData[0].id, marketsData[1].id, marketsData[2].id]);
+        }
+
+        setDataError(null);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        setDataError("Failed to load data. Please make sure the database is set up.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const isValid = selectedItems.length > 0 && selectedMarkets.length >= 2;
 
@@ -879,14 +636,14 @@ export default function PriceComparePage() {
     lines.push("");
     
     selectedItems.forEach((it) => {
-      const item = ITEMS.find((i) => i.id === it)!;
+      const item = items.find((i) => i.id === it)!;
       lines.push(`📦 ${item.name.toUpperCase()} (${item.unit})`);
       lines.push("─────────────────────────────────");
       
-      const prices = selectedMarkets
+      const itemPrices = selectedMarkets
         .map((m) => ({
-          market: MARKETS.find((mk) => mk.id === m)?.name,
-          price: PRICES[it]?.[m],
+          market: markets.find((mk) => mk.id === m)?.name,
+          price: prices[it]?.[m],
         }))
         .sort((a, b) => {
           if (a.price === null || a.price === undefined) return 1;
@@ -894,7 +651,7 @@ export default function PriceComparePage() {
           return a.price - b.price;
         });
 
-      prices.forEach((p, idx) => {
+      itemPrices.forEach((p, idx) => {
         const priceStr = p.price === undefined || p.price === null ? "N/A" : `Rs ${p.price}`;
         const badge = idx === 0 && p.price ? " ✓ BEST" : "";
         lines.push(`  ${p.market}: ${priceStr}${badge}`);
@@ -908,7 +665,7 @@ export default function PriceComparePage() {
     navigator.clipboard?.writeText(lines.join("\n"));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-  }, [selectedItems, selectedMarkets]);
+  }, [selectedItems, selectedMarkets, items, markets]);
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 py-8 px-4">
@@ -922,11 +679,11 @@ export default function PriceComparePage() {
             transition={{ duration: 0.4 }}
             className="space-y-6 mt-6"
           >
-            <ItemSearchSelect items={ITEMS} selected={selectedItems} setSelected={setSelectedItems} />
-            <MarketChips markets={MARKETS} selected={selectedMarkets} setSelected={setSelectedMarkets} />
+            <ItemSearchSelect items={items} selected={selectedItems} setSelected={setSelectedItems} />
+            <MarketChips markets={markets} selected={selectedMarkets} setSelected={setSelectedMarkets} />
 
             {selectedItems.length > 0 && selectedMarkets.length > 0 && (
-              <SavingsCalculator itemIds={selectedItems} marketIds={selectedMarkets} prices={PRICES} />
+              <SavingsCalculator itemIds={selectedItems} marketIds={selectedMarkets} prices={prices} />
             )}
 
             <div className="flex flex-col sm:flex-row gap-3 mt-6">
@@ -969,7 +726,7 @@ export default function PriceComparePage() {
                   <ul className="text-xs space-y-1 text-blue-800">
                     <li>• Select at least 1 item and 2 markets to compare</li>
                     <li>• Use search to quickly find items and markets</li>
-                    <li>• Toggle "Verified only" to filter trusted markets</li>
+                    <li>• Toggle &ldquo;Verified only&rdquo; to filter trusted markets</li>
                     <li>• View potential savings before comparing</li>
                   </ul>
                 </div>
@@ -1025,9 +782,9 @@ export default function PriceComparePage() {
               </div>
             </div>
 
-            <SavingsCalculator itemIds={selectedItems} marketIds={selectedMarkets} prices={PRICES} />
-            <SummaryAnalytics itemIds={selectedItems} marketIds={selectedMarkets} prices={PRICES} />
-            <ResultsPerItem itemIds={selectedItems} marketIds={selectedMarkets} prices={PRICES} />
+            <SavingsCalculator itemIds={selectedItems} marketIds={selectedMarkets} prices={prices} />
+            <SummaryAnalytics itemIds={selectedItems} marketIds={selectedMarkets} prices={prices} markets={markets} />
+            <ResultsPerItem itemIds={selectedItems} marketIds={selectedMarkets} prices={prices} items={items} markets={markets} />
           </motion.section>
         )}
 

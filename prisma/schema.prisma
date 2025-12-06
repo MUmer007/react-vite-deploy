@@ -1,0 +1,52 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Item {
+  id        String   @id @default(cuid())
+  name      String
+  unit      String
+  emoji     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  prices    Price[]
+
+  @@unique([name])
+}
+
+model Market {
+  id        String   @id @default(cuid())
+  name      String
+  rating    Float?
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  prices    Price[]
+
+  @@unique([name])
+}
+
+model Price {
+  id        String   @id @default(cuid())
+  itemId    String
+  marketId  String
+  price     Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  item   Item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  market Market @relation(fields: [marketId], references: [id], onDelete: Cascade)
+
+  @@unique([itemId, marketId])
+  @@index([itemId])
+  @@index([marketId])
+}
+
